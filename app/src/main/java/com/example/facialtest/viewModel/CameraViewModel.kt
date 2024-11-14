@@ -1,7 +1,6 @@
 package com.example.facialtest.viewModel
 
 import android.graphics.Bitmap
-import android.net.Uri
 import android.util.Log
 import androidx.camera.core.CameraSelector
 import androidx.compose.runtime.getValue
@@ -10,26 +9,32 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.example.facialtest.UiScreen.CameraScreenEvents
 import com.example.facialtest.UiScreen.CameraScreenState
-import com.example.facialtest.UiScreen.components.Capturedata
+import com.example.facialtest.data.CameraDetection
+import com.example.facialtest.data.CapturedData
 import com.pdm.ml_face_detection.new.CameraFileUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 
 @HiltViewModel
 class CameraViewModel @Inject constructor() : ViewModel() {
 
-  var state by mutableStateOf(CameraScreenState())
+var state by mutableStateOf(CameraScreenState())
+  var isFace by mutableStateOf(false)
+  val listItem : MutableList<CapturedData> = mutableListOf()
 
-  private val _capturedFaces = MutableStateFlow<List<Bitmap>>(emptyList())
-  val capturedFaces: StateFlow<List<Bitmap>> = _capturedFaces
+  init {
+    listItem.add(CapturedData(facePosition = FacePosition.LEFT))
+    listItem.add(CapturedData(facePosition = FacePosition.RIGHT))
+    listItem.add(CapturedData(facePosition = FacePosition.STRAIGHT))
+    listItem.add(CapturedData(facePosition = FacePosition.TOP))
+    listItem.add(CapturedData(facePosition = FacePosition.BOTTOM))
+  }
 
-  private val _capturedData = MutableStateFlow(Capturedata(null, emptyList()))
-  val capturedData: StateFlow<Capturedata> get() = _capturedData
-
-  private val _imageSavedUri = MutableStateFlow<Uri?>(null)
-  val imageSavedUri: StateFlow<Uri?> get() = _imageSavedUri
+  private val cameraViewModeState = MutableStateFlow(CameraDetection(faceDetection = false, capturedFace = listItem.find { it.image == null}))
+  val cameraViewUiState = cameraViewModeState.asStateFlow()
 
   fun onEvent(event: CameraScreenEvents) {
     when (event) {
@@ -39,23 +44,41 @@ class CameraViewModel @Inject constructor() : ViewModel() {
       }
 
       is CameraScreenEvents.OnTakePhotoClick -> {
-        CameraFileUtils.takePicture(event.imageCapture, event.context, CameraViewModel())
+        CameraFileUtils.takePicture(event.imageCapture, event.context, this)
+      }
+
+      is CameraScreenEvents.EditImage -> {
+        Log.e("editnew","${event.capturedData.facePosition}")
+        cameraViewModeState.update {
+          it.copy(
+            lastUpdate = System.currentTimeMillis(),
+            capturedFace =  event.capturedData)
+        }
       }
     }
   }
 
-  fun setImageSavedUri(uri: Uri) {
-    val currentData = _capturedData.value
-    Log.d("CameraViewModel", "Setting image URI: $uri")
-    _capturedData.value = currentData.copy(imageUri = uri)
-    Log.d("CameraViewModel", "Image URI set: ${_capturedData.value.imageUri}")
-  }
-
-  fun addCapturedFace(faceBitmap: Bitmap) {
-    Log.e("CameraViewModel", "Adding captured face: $faceBitmap")
-    val updatedFaces = _capturedFaces.value + faceBitmap
-    _capturedFaces.value = updatedFaces
-    Log.d("ViewModel", "Total captured faces: ${_capturedFaces.value.size}")
-    Log.d("ViewModel", "Total captured faces in : ${capturedFaces.value.size}")
+  fun addCapturedFace( image: Bitmap) {
+    val tempData= cameraViewModeState.value.capturedFace
+    listItem.find { it.facePosition==tempData?.facePosition }.apply {
+        this?.image=image
+    }
+    cameraViewModeState.update { it.copy(
+      lastUpdate=System.currentTimeMillis(),
+      capturedFace = listItem.find { it.image == null}
+    ) }
   }
 }
+
+
+
+enum class FacePosition {
+  STRAIGHT,
+  RIGHT,
+  LEFT,
+  TOP,
+  BOTTOM
+}
+
+
+

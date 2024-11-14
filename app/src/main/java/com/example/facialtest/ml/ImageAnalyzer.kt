@@ -10,7 +10,7 @@ import com.google.mlkit.vision.face.FaceDetectorOptions
 
 @SuppressLint("UnsafeOptInUsageError")
 class FaceDetectionAnalyzer(
-  private val onFaceDetected: (faces: MutableList<Face>, width: Int, height: Int) -> Unit
+  private val onFaceDetected: (faces: MutableList<Face>, width: Int, height: Int, image : ImageProxy) -> Unit
 ) : ImageAnalysis.Analyzer {
 
   private val options = FaceDetectorOptions.Builder()
@@ -28,10 +28,14 @@ class FaceDetectionAnalyzer(
       val imageValue = InputImage.fromMediaImage(it, image.imageInfo.rotationDegrees)
       faceDetector.process(imageValue)
         .addOnCompleteListener { faces ->
-          onFaceDetected(faces.result, image.width, image.height)
+           /* val faces = faces.result
+            val filteredFaces = faces.filter { face ->
+                face.headEulerAngleX in -5.0..5.0 && face.headEulerAngleY in -25.0..-10.0 }*/
+          onFaceDetected(faces.result, image.width, image.height, image)
           image.image?.close()
           image.close()
         }
     }
   }
 }
+
