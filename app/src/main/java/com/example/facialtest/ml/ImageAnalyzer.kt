@@ -28,9 +28,6 @@ class FaceDetectionAnalyzer(
       val imageValue = InputImage.fromMediaImage(it, image.imageInfo.rotationDegrees)
       faceDetector.process(imageValue)
         .addOnCompleteListener { faces ->
-           /* val faces = faces.result
-            val filteredFaces = faces.filter { face ->
-                face.headEulerAngleX in -5.0..5.0 && face.headEulerAngleY in -25.0..-10.0 }*/
           onFaceDetected(faces.result, image.width, image.height, image)
           image.image?.close()
           image.close()

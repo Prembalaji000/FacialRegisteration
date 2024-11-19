@@ -16,6 +16,7 @@ import androidx.camera.core.ImageCaptureException
 import androidx.exifinterface.media.ExifInterface
 import com.example.facialtest.viewModel.CameraViewModel
 import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
 import java.io.File
@@ -77,32 +78,34 @@ object CameraFileUtils {
                   val mutableBitmap = rotatedBitmap.copy(Bitmap.Config.ARGB_8888, true)
                   if (faces.isNotEmpty()) {
                     val face = faces[0]
+                    val uniqueFaceId = generateFaceIdentifier(face)
+                    Log.e("uniqueFaceId",uniqueFaceId)
                     val boundingBox = face.boundingBox
-
+                    val faceId = face.trackingId.toString()
                     val cropX = boundingBox.left.coerceAtLeast(0)
                     val cropY = boundingBox.top.coerceAtLeast(0)
                     val cropWidth = boundingBox.width().coerceAtMost(mutableBitmap.width - cropX)
                     val cropHeight = boundingBox.height().coerceAtMost(mutableBitmap.height - cropY)
                     val faceBitmap = Bitmap.createBitmap(mutableBitmap, cropX, cropY, cropWidth, cropHeight)
-
                     val croppedFaceFile = File(photoFile.parent, "face_${photoFile.name}")
-                    FileOutputStream(croppedFaceFile).use { out ->
-                      faceBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
-                    }
 
-                    MediaScannerConnection.scanFile(
+                    FileOutputStream(croppedFaceFile).use { out ->
+                      bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+                    }
+                    viewModel.addCapturedFace(image = bitmap, faceId = faceId, cropImage = faceBitmap)
+
+                    /*MediaScannerConnection.scanFile(
                       context,
                       arrayOf(croppedFaceFile.toString()),
                       null
                     ) { path, uri ->
-                      viewModel.addCapturedFace(image = faceBitmap)
-                      Log.d("CameraLool", "Face image capture succeeded: $uri")
+                      Log.d("Camera", "Face image capture succeeded: $uri, path: $path")
                       Toast.makeText(context, "Face image captured", Toast.LENGTH_SHORT).show()
-                    }
-                    // Add the cropped face bitmap to the ViewModel
+                    }*/
+
                     Log.e("CameraViewModel", "Adding captured face: $faceBitmap")
                   } else {
-                    Log.d("CameraLool", "No face detected in the image")
+                    Log.d("Camera", "No face detected in the image")
                   }
                 }
               }
@@ -113,8 +116,6 @@ object CameraFileUtils {
       }
     )
   }
-
-
 
   private fun rotateImageIfRequired(filePath: String, bitmap: Bitmap): Bitmap {
     val exif = ExifInterface(filePath)
@@ -131,5 +132,16 @@ object CameraFileUtils {
     val matrix = Matrix().apply { postRotate(degrees) }
     return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
   }
+
+  private fun generateFaceIdentifier(face: Face): String {
+    // Create a unique identifier based on landmarks or other properties of the face
+    val landmarks = face.allLandmarks.map { landmark ->
+      "${landmark.landmarkType}:${landmark.position.x},${landmark.position.y}"
+    }.joinToString(";")
+    return landmarks.hashCode().toString() // Generate a hash code as a unique identifier
+  }
 }
+
+
+
 

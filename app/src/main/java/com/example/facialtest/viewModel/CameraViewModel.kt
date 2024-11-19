@@ -21,14 +21,14 @@ import javax.inject.Inject
 @HiltViewModel
 class CameraViewModel @Inject constructor() : ViewModel() {
 
-var state by mutableStateOf(CameraScreenState())
+  var state by mutableStateOf(CameraScreenState())
   var isFace by mutableStateOf(false)
   val listItem : MutableList<CapturedData> = mutableListOf()
 
   init {
+    listItem.add(CapturedData(facePosition = FacePosition.STRAIGHT))
     listItem.add(CapturedData(facePosition = FacePosition.LEFT))
     listItem.add(CapturedData(facePosition = FacePosition.RIGHT))
-    listItem.add(CapturedData(facePosition = FacePosition.STRAIGHT))
     listItem.add(CapturedData(facePosition = FacePosition.TOP))
     listItem.add(CapturedData(facePosition = FacePosition.BOTTOM))
   }
@@ -48,7 +48,7 @@ var state by mutableStateOf(CameraScreenState())
       }
 
       is CameraScreenEvents.EditImage -> {
-        Log.e("editnew","${event.capturedData.facePosition}")
+        Log.e("editNew","${event.capturedData.facePosition}")
         cameraViewModeState.update {
           it.copy(
             lastUpdate = System.currentTimeMillis(),
@@ -58,14 +58,18 @@ var state by mutableStateOf(CameraScreenState())
     }
   }
 
-  fun addCapturedFace( image: Bitmap) {
-    val tempData= cameraViewModeState.value.capturedFace
-    listItem.find { it.facePosition==tempData?.facePosition }.apply {
-        this?.image=image
+  fun addCapturedFace(image: Bitmap, faceId : String, cropImage: Bitmap) {
+    val tempData = cameraViewModeState.value.capturedFace
+    listItem.find { it.facePosition == tempData?.facePosition }.apply {
+        this?.image = image
+        this?.faceId = faceId
+        this?.cropImage = cropImage
+      Log.e("faceIsVM","in $cropImage, $image")
     }
-    cameraViewModeState.update { it.copy(
-      lastUpdate=System.currentTimeMillis(),
-      capturedFace = listItem.find { it.image == null}
+    cameraViewModeState.update { it.copy (
+      lastUpdate = System.currentTimeMillis(),
+      capturedFace = listItem.find { it.image == null },
+      isCaptureFace = false,
     ) }
   }
 }

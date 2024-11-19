@@ -51,11 +51,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -108,7 +111,7 @@ fun NewCameraScreen(
 
     Column(
         modifier = Modifier
-            .fillMaxWidth()
+            .fillMaxSize()
             .padding()
             .background(Color.Black.copy(alpha = 0.8f))
             .padding(vertical = 32.dp),
@@ -123,12 +126,13 @@ fun NewCameraScreen(
             modifier = Modifier.alpha(alpha),
             text = commendText,
             fontSize = 16.sp,
-            color = Color.White,
+            color = if (commendText == "Successfully Captured !") colorResource(id = R.color.green) else Color.White,
             fontWeight = FontWeight.Medium
         )
-
+/*
         Spacer(modifier = Modifier.height(6.dp))
-        CircleCard(onTakePhotoClick, storagePermission,isFaceDetected)
+
+        CircleCard(onTakePhotoClick, storagePermission, isFaceDetected)*/
 
     }
 }
@@ -226,26 +230,20 @@ fun MainScreens(
     isFaceDetected : Boolean,
     capturedFaces : List<CapturedData>,
     positionText : String?,
-    position : FacePosition?
-) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        NewCameraScreen(onTakePhotoClick, storagePermission, isFaceDetected, positionText, position)
+    position : FacePosition?,
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.White),
+) {
+    Column() {
+        Box(modifier = Modifier.background(Color.White),
             contentAlignment = Alignment.Center
         ) {
-            BottomSheet(capturedFaces)
+            BottomSheet(capturedFaces,storagePermission)
         }
     }
 }
 
 @Composable
-fun BottomSheet(capturedFaces : List<CapturedData>) {
+fun BottomSheet(capturedFaces : List<CapturedData>, storagePermission: Boolean) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -263,7 +261,7 @@ fun BottomSheet(capturedFaces : List<CapturedData>) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            SubmitButton()
+            SubmitButton(storagePermission)
         }
     }
 }
@@ -278,6 +276,7 @@ fun BottomSheetItem(
     } else {
         colorResource(id = R.color.light_black)
     }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -305,7 +304,10 @@ fun BottomSheetItem(
                     contentDescription = "Captured Face",
                     modifier = Modifier
                         .fillMaxSize()
-                        .clip(RoundedCornerShape(10.dp)),
+                        .clip(RoundedCornerShape(10.dp))
+                        .graphicsLayer {
+                            scaleX = -1f
+                        },
                     contentScale = ContentScale.Crop
                 )
                 Column(
@@ -314,10 +316,12 @@ fun BottomSheetItem(
                     verticalArrangement = Arrangement.Bottom
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.green_tick),
+                        imageVector = ImageVector.vectorResource(id = R.drawable.green_tick),
                         contentDescription = null,
                         tint = colorResource(id = R.color.green),
-                        modifier = Modifier.align(Alignment.End)
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .padding(4.dp)
                     )
                 }
             }
@@ -328,6 +332,7 @@ fun BottomSheetItem(
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.edit_icon),
+                    tint = colorResource(id = R.color.light_black),
                     contentDescription = null
                 )
             }
@@ -345,9 +350,22 @@ fun BottomSheetItem(
 }
 
 @Composable
-fun SubmitButton() {
+fun SubmitButton(storagePermission: Boolean) {
+    var isStorageGranted by remember { mutableStateOf(storagePermission) }
+    val launcher =
+        rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                isStorageGranted = true
+            } else {
+                Log.d("Camera is Granted", "$isStorageGranted")
+            }
+        }
     Button(
-        onClick = {},
+        onClick = {
+            if (!isStorageGranted){
+                launcher.launch(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+        },
         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E88E5)),
         modifier = Modifier
             .fillMaxWidth(0.9f)
