@@ -60,11 +60,20 @@ class CameraViewModel @Inject constructor() : ViewModel() {
 
   fun addCapturedFace(image: Bitmap, faceId : String, cropImage: Bitmap) {
     val tempData = cameraViewModeState.value.capturedFace
-    listItem.find { it.facePosition == tempData?.facePosition }.apply {
-        this?.image = image
-        this?.faceId = faceId
-        this?.cropImage = cropImage
+    listItem.find { it.facePosition == tempData?.facePosition }?.apply {
+        this.image = image
+        this.faceId = faceId
+        this.cropImage = cropImage
       Log.e("faceIsVM","in $cropImage, $image")
+      when(facePosition){
+        FacePosition.RIGHT -> this.right = image
+        FacePosition.LEFT -> this.left = image
+        FacePosition.STRAIGHT -> this.straight = image
+        FacePosition.TOP -> this.top = image
+        FacePosition.BOTTOM -> this.bottom = image
+        else -> this.image = image
+      }
+      Log.e("PositionBitmap","straight = ${this.straight}, left = ${this.left}, right = ${this.right}, top = ${this.top}, bottom = ${this.bottom}")
     }
     cameraViewModeState.update { it.copy (
       lastUpdate = System.currentTimeMillis(),

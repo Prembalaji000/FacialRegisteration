@@ -16,7 +16,6 @@ import androidx.camera.core.ImageCaptureException
 import androidx.exifinterface.media.ExifInterface
 import com.example.facialtest.viewModel.CameraViewModel
 import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
 import java.io.File
@@ -63,7 +62,7 @@ object CameraFileUtils {
           val savedUri = outputFileResults.savedUri ?: Uri.fromFile(photoFile)
           val image: InputImage
           val encodedImage = context.fileUriToBase64(savedUri)
-          Log.e("imageUri","$encodedImage")
+          Log.e("imageUriEncode","$encodedImage")
 
           try {
             image = InputImage.fromFilePath(context, savedUri)
@@ -73,26 +72,26 @@ object CameraFileUtils {
                 if (task.isSuccessful) {
                   val faces = task.result
                   val bitmap = BitmapFactory.decodeFile(photoFile.absolutePath)
-                  Log.e("facesin","bit = $bitmap")
                   val rotatedBitmap = rotateImageIfRequired(photoFile.absolutePath, bitmap)
                   val mutableBitmap = rotatedBitmap.copy(Bitmap.Config.ARGB_8888, true)
                   if (faces.isNotEmpty()) {
                     val face = faces[0]
-                    val uniqueFaceId = generateFaceIdentifier(face)
-                    Log.e("uniqueFaceId",uniqueFaceId)
                     val boundingBox = face.boundingBox
                     val faceId = face.trackingId.toString()
+                    Log.e("faceID", faceId)
                     val cropX = boundingBox.left.coerceAtLeast(0)
                     val cropY = boundingBox.top.coerceAtLeast(0)
                     val cropWidth = boundingBox.width().coerceAtMost(mutableBitmap.width - cropX)
                     val cropHeight = boundingBox.height().coerceAtMost(mutableBitmap.height - cropY)
                     val faceBitmap = Bitmap.createBitmap(mutableBitmap, cropX, cropY, cropWidth, cropHeight)
+                    val encodedBitmap = bitmapToBase64(faceBitmap)
+                    Log.e("encodedBitmap", encodedBitmap)
                     val croppedFaceFile = File(photoFile.parent, "face_${photoFile.name}")
 
                     FileOutputStream(croppedFaceFile).use { out ->
-                      bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+                      mutableBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
                     }
-                    viewModel.addCapturedFace(image = bitmap, faceId = faceId, cropImage = faceBitmap)
+                    viewModel.addCapturedFace(image = mutableBitmap, faceId = faceId, cropImage = faceBitmap)
 
                     /*MediaScannerConnection.scanFile(
                       context,
@@ -131,14 +130,6 @@ object CameraFileUtils {
   private fun rotateImage(bitmap: Bitmap, degrees: Float): Bitmap {
     val matrix = Matrix().apply { postRotate(degrees) }
     return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-  }
-
-  private fun generateFaceIdentifier(face: Face): String {
-    // Create a unique identifier based on landmarks or other properties of the face
-    val landmarks = face.allLandmarks.map { landmark ->
-      "${landmark.landmarkType}:${landmark.position.x},${landmark.position.y}"
-    }.joinToString(";")
-    return landmarks.hashCode().toString() // Generate a hash code as a unique identifier
   }
 }
 

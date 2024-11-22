@@ -19,5 +19,10 @@ data class CapturedData(
     var cropImage : Bitmap? = null,
     var uri : Uri? = null,
     var descriptor : String? = null,
-    var faceId : String? = null
+    var faceId : String? = null,
+    var straight : Bitmap? = null,
+    var left : Bitmap? = null,
+    var right : Bitmap? = null,
+    var top : Bitmap? = null,
+    var bottom : Bitmap? = null,
 )

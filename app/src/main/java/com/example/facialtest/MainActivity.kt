@@ -27,7 +27,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding->
-                CameraX(cameraPermission = cameraPermission, storagePermission = storagePermission, viewModel = viewModel, modifier = Modifier.padding(innerPadding), )
+                CameraX(cameraPermission = cameraPermission, storagePermission = storagePermission, viewModel = viewModel, modifier = Modifier.padding(innerPadding) )
             }
         }
     }

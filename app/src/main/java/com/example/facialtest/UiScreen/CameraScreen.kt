@@ -46,13 +46,12 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.facialtest.UiScreen.components.BasicButton
-import com.example.facialtest.UiScreen.components.MainScreens
-import com.example.facialtest.UiScreen.components.NewCameraScreen
-import com.example.facialtest.data.CameraDetection
+import com.example.facialtest.UiScreen.components.BottomBar
+import com.example.facialtest.UiScreen.components.CameraScreen
+import com.example.facialtest.data.CapturedData
 import com.example.facialtest.ml.FaceDetectionAnalyzer
 import com.example.facialtest.viewModel.CameraViewModel
 import com.example.facialtest.viewModel.FacePosition
-import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceLandmark
 import com.pdm.ml_face_detection.new.CameraFileUtils
 import kotlinx.coroutines.delay
@@ -63,7 +62,7 @@ fun CameraX(
     cameraPermission: Boolean,
     viewModel: CameraViewModel = hiltViewModel(),
     storagePermission: Boolean,
-    modifier: Modifier
+    modifier: Modifier,
 ) {
     val state = viewModel.state
     val localContext = LocalContext.current
@@ -89,7 +88,7 @@ fun CameraX(
         }
 
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -144,14 +143,7 @@ fun CameraContent(
     }
     var isFaceCapture by remember { mutableStateOf(uiState.isCaptureFace) }
     val faceIds by remember { mutableStateOf(listItem[0].faceId) }
-    val trackingId = listItem[0].faceId
-    Log.e("faceIdVM", "new = ${trackingId}")
     var lastCapturedPosition by remember { mutableStateOf<FacePosition?>(null) }
-    val image = CameraDetection(faceDetection = Boolean.equals(true))
-    Log.e(
-        "isFaceDe",
-        "true or false in comp in main 2 = $image, new = $uiState, and = ${listItem.size}"
-    )
     Log.e("faceIsVM","isFaceDetected, $faceIds")
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
 
@@ -160,7 +152,6 @@ fun CameraContent(
     val previewView = remember { PreviewView(context) }
     val executor = ContextCompat.getMainExecutor(context)
     val scope = rememberCoroutineScope()
-    Log.e("faced123","${trackingId}")
     LaunchedEffect(selectedCamera) {
         val cameraProvider = cameraProviderFuture.get()
 
@@ -179,8 +170,7 @@ fun CameraContent(
                     if (listFaces.isNotEmpty() && !isFaceCapture) {
                         val face = listFaces[0]
                         val faceId = face.trackingId.toString()
-                        val faceIdentifier = generateFaceIdentifier(face)
-                        Log.e("faceIds","${face.boundingBox.left}, ${face.boundingBox.top}, ${face.headEulerAngleY}, ${face.headEulerAngleX}")
+
                         val leftEyeOpen = face.leftEyeOpenProbability ?: 0.0f
                         val rightEyeOpen = face.rightEyeOpenProbability ?: 0.0f
                         val areEyesOpen = leftEyeOpen > 0.8f && rightEyeOpen > 0.8f
@@ -209,16 +199,9 @@ fun CameraContent(
                             isFaceCapture = true
                             lastCapturedPosition = uiState.capturedFace?.facePosition
                             val trackingIds = listItem[0].faceId
-                            Log.e("faced123","${faceId == trackingIds}")
+                            Log.e("faced123","${trackingIds == faceId}")
                             scope.launch {
-                                /*if (uiState.capturedFace?.faceId == null){
-                                    CameraFileUtils.takePicture(imageCapture, context, viewModel)
-                                    delay(2000)
-                                    isFaceCapture = false
-                                }*/
-                                Log.e("faced123","${trackingIds} - ${faceId}")
                                 if (trackingIds == null || trackingIds != faceId){
-                                    Log.e("faceIsVM", "new = ${faceId}")
                                     CameraFileUtils.takePicture(imageCapture, context, viewModel)
                                     delay(2000)
                                     isFaceCapture = false
@@ -251,7 +234,8 @@ fun CameraContent(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         content = {
-            Box(modifier = Modifier
+            Box(
+                modifier = Modifier
                 .fillMaxSize()
                 .padding(it)
             ) {
@@ -264,31 +248,24 @@ fun CameraContent(
                         addView(previewView)
                     }
                 })
-                NewCameraScreen(onTakePhotoClick, storagePermission, isFace.value, positionText, position)
-            }
-        },
-        bottomBar = {
-            Box(
-                modifier = Modifier.padding(top = 16.dp, bottom = 16.dp, start = 4.dp, end = 4.dp)
-            ) {
-                MainScreens(
+                CameraScreen(
                     onTakePhotoClick = onTakePhotoClick,
-                    storagePermission =  storagePermission,
                     isFaceDetected = isFace.value,
-                    capturedFaces =  listItem,
                     positionText = positionText,
                     position = position
                 )
             }
+        },
+        bottomBar = {
+            Box(
+                modifier = Modifier
+                    .padding(top = 16.dp, bottom = 16.dp, start = 4.dp, end = 4.dp)
+            ) {
+                BottomBar(
+                    storagePermission =  storagePermission,
+                    capturedFaces =  listItem,
+                )
+            }
         }
     )
-}
-
-private fun generateFaceIdentifier(face: Face): String {
-    // Create a unique identifier based on landmarks or other properties of the face
-    val landmarks = face.allLandmarks.map { landmark ->
-        "${landmark.landmarkType}:${landmark.position.x},${landmark.position.y}"
-    }.joinToString(";")
-
-    return landmarks.hashCode().toString() // Generate a hash code as a unique identifier
 }

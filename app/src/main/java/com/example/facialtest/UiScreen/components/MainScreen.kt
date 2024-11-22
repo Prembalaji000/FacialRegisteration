@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -35,6 +36,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -44,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
@@ -73,9 +76,8 @@ import com.example.facialtest.viewModel.FacePosition
 @Preview
 @Composable
 fun CameraPreviews(){
-    NewCameraScreen(
+    CameraScreen(
         onTakePhotoClick = {},
-        storagePermission = true,
         isFaceDetected =false,
         positionText = "",
         position = null
@@ -83,9 +85,8 @@ fun CameraPreviews(){
 }
 
 @Composable
-fun NewCameraScreen(
+fun CameraScreen(
     onTakePhotoClick: () -> Unit,
-    storagePermission: Boolean,
     isFaceDetected : Boolean,
     positionText : String?,
     position : FacePosition?
@@ -129,11 +130,6 @@ fun NewCameraScreen(
             color = if (commendText == "Successfully Captured !") colorResource(id = R.color.green) else Color.White,
             fontWeight = FontWeight.Medium
         )
-/*
-        Spacer(modifier = Modifier.height(6.dp))
-
-        CircleCard(onTakePhotoClick, storagePermission, isFaceDetected)*/
-
     }
 }
 
@@ -147,16 +143,15 @@ fun DrawDashedOval(isFaceDetected : Boolean) {
     var right by remember { mutableFloatStateOf(0f) }
     var bottom by remember { mutableFloatStateOf(0f) }
 
-    Log.e("isFaceDe","true or false in comp = ${isFaceDetected}")
+    Log.e("isFaceDe","true or false in comp = $isFaceDetected")
 
     Canvas(modifier = Modifier
         .size(260.dp, 320.dp)
         .onGloballyPositioned { coordinates ->
-            // Get position in the root layout
+
             val position = coordinates.positionInRoot()
             val size = coordinates.size
 
-            // Calculate left, top, right, and bottom
             left = position.x
             top = position.y
             right = left + size.width
@@ -212,28 +207,19 @@ fun CircleCard(
 
 @Preview
 @Composable
-fun MainScreenPreview(){
-    MainScreens(
-        onTakePhotoClick = {},
+fun BottomBarPreview(){
+    BottomBar(
         storagePermission = true,
-        isFaceDetected = false,
         capturedFaces = listOf(),
-        positionText = "",
-        position = null
     )
 }
 
 @Composable
-fun MainScreens(
-    onTakePhotoClick: () -> Unit,
+fun BottomBar(
     storagePermission: Boolean,
-    isFaceDetected : Boolean,
     capturedFaces : List<CapturedData>,
-    positionText : String?,
-    position : FacePosition?,
-
 ) {
-    Column() {
+    Column {
         Box(modifier = Modifier.background(Color.White),
             contentAlignment = Alignment.Center
         ) {
@@ -244,6 +230,15 @@ fun MainScreens(
 
 @Composable
 fun BottomSheet(capturedFaces : List<CapturedData>, storagePermission: Boolean) {
+    val listState = rememberLazyListState()
+    val targetIndex = capturedFaces.indexOfFirst { it.image == null }
+
+    LaunchedEffect(targetIndex) {
+        if (targetIndex >= 3) {
+            listState.animateScrollToItem(targetIndex)
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -253,7 +248,7 @@ fun BottomSheet(capturedFaces : List<CapturedData>, storagePermission: Boolean) 
             verticalArrangement = Arrangement.Center
         ) {
 
-            LazyRow {
+            LazyRow (state = listState) {
                 items(capturedFaces) { data ->
                     BottomSheetItem(data)
                 }
@@ -261,7 +256,7 @@ fun BottomSheet(capturedFaces : List<CapturedData>, storagePermission: Boolean) 
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            SubmitButton(storagePermission)
+            SubmitButton(storagePermission, isEnable = !capturedFaces.all { it.image == null })
         }
     }
 }
@@ -269,7 +264,7 @@ fun BottomSheet(capturedFaces : List<CapturedData>, storagePermission: Boolean) 
 @Composable
 fun BottomSheetItem(
     capturedFaces : CapturedData,
-    viewModel: CameraViewModel = hiltViewModel()
+    viewModel: CameraViewModel = hiltViewModel(),
 ) {
     val color = if (capturedFaces.image?.asImageBitmap() != null){
         colorResource(id = R.color.green)
@@ -350,7 +345,7 @@ fun BottomSheetItem(
 }
 
 @Composable
-fun SubmitButton(storagePermission: Boolean) {
+fun SubmitButton(storagePermission: Boolean, isEnable : Boolean) {
     var isStorageGranted by remember { mutableStateOf(storagePermission) }
     val launcher =
         rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()) { isGranted ->
@@ -366,10 +361,11 @@ fun SubmitButton(storagePermission: Boolean) {
                 launcher.launch(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
             }
         },
-        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E88E5)),
+        colors = ButtonDefaults.buttonColors(containerColor = if (isEnable) { Color(0xFF1E88E5) } else Color(0xFF1E88E5).copy(alpha = 0.4f)),
         modifier = Modifier
             .fillMaxWidth(0.9f)
-            .height(48.dp)
+            .height(48.dp),
+        enabled = isEnable
     ) {
         Text(text = "Submitted", color = Color.White, fontWeight = FontWeight.Bold)
     }
